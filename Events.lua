@@ -29,20 +29,20 @@ end
 
 --[[ Continuous Events ]]--
 
-BagBrother.flaggedBags = {}
+BagBrother.queue = {}
 
 function BagBrother:BAG_UPDATE(bag)
-  self.flaggedBags[bag] = true
+  self.queue[bag] = true
 end
 
 function BagBrother:BAG_UPDATE_DELAYED()
-  for bag in pairs(self.flaggedBags) do
+  for bag in pairs(self.queue) do
     if (self.atBank or not isBankBag(bag)) then
       self:SaveBag(bag, bag <= BACKPACK_CONTAINER)
     end
   end
 
-  self.flaggedBags = {}
+  self.queue = {}
 end
 
 function BagBrother:PLAYER_EQUIPMENT_CHANGED(slot)
