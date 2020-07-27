@@ -22,11 +22,6 @@ local NUM_VAULT_SLOTS = 80 * 2
 local FIRST_BANK_SLOT = 1 + NUM_BAG_SLOTS
 local LAST_BANK_SLOT = NUM_BANKBAGSLOTS + NUM_BAG_SLOTS
 
-local function isBankBag (bag)
-  return (bag == BANK_CONTAINER or
-          (bag >= FIRST_BANK_SLOT and bag <= LAST_BANK_SLOT));
-end
-
 --[[ Continuous Events ]]--
 
 BagBrother.queue = {}
@@ -36,15 +31,21 @@ function BagBrother:BAG_UPDATE(bag)
 end
 
 function BagBrother:PLAYERBANKSLOTS_CHANGED()
-  self:SaveBag(BANK_CONTAINER, true)
+  if (self.atBank) then
+    self:SaveBagContent(BANK_CONTAINER)
+  end
 end
 
 function BagBrother:BAG_UPDATE_DELAYED()
   for bag in pairs(self.queue) do
     -- BAG_UPDATE gets called when teleporting on all bags including bank bags,
     -- so they have to be checked
-    if (self.atBank or not isBankBag(bag)) then
-      self:SaveBag(bag, bag <= BACKPACK_CONTAINER)
+    if (self.atBank or not self:IsBankBag(bag)) then
+      if (bag > BACKPACK_CONTAINER) then
+        self:SaveBag(bag)
+      else
+        self:SaveBagContent(bag)
+      end
     end
   end
 
@@ -74,10 +75,10 @@ function BagBrother:BANKFRAME_OPENED()
   end
 
   if REAGENTBANK_CONTAINER and IsReagentBankUnlocked() then
-    self:SaveBag(REAGENTBANK_CONTAINER, true)
+    self:SaveBagContent(REAGENTBANK_CONTAINER)
   end
 
-  self:SaveBag(BANK_CONTAINER, true)
+  self:SaveBagContent(BANK_CONTAINER)
 end
 
 function BagBrother:BANKFRAME_CLOSED()
