@@ -131,7 +131,7 @@ end
 
 local function initBagSlotCache (ownerData)
   return initEquipRangeCache(ownerData,
-      ContainerIDToInventoryID(FIRST_BAG_SLOT),
+      ContainerIDToInventoryID(FIRST_BAG_SLOT + 1),
       ContainerIDToInventoryID(LAST_BAG_SLOT))
 end
 
