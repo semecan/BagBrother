@@ -148,6 +148,6 @@ function Interface:GetGuildItem(realm, name, tab, slot)
   return Interface:GetItem(realm, name .. '*', tab, slot)
 end
 
-function Interface:GetGuildItemCount(realm, owner, bag, itemId)
-  return addon:GetItemCount(realm, owner .. '*', bag, itemId)
+function Interface:GetGuildItemCount(realm, owner, itemId)
+  return addon:GetItemCount(realm, owner .. '*', 'guild', itemId)
 end
