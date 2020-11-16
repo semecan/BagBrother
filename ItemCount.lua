@@ -61,7 +61,7 @@ local function getBagType (bag)
 end
 
 local function updateCacheCount (cache, item)
-  if (type(item) ~= 'string') then
+  if (not item) then
     return
   end
 
@@ -101,7 +101,7 @@ local function initBagCache (ownerData)
 end
 
 local function initBankCache (ownerData)
-  local bankCache = initBagRangeCache(ownerData, FIRST_BAG_SLOT, LAST_BANK_SLOT)
+  local bankCache = initBagRangeCache(ownerData, FIRST_BANK_SLOT, LAST_BANK_SLOT)
 
   return initBagItemCountCache(bankCache, ownerData[BANK_CONTAINER])
 end
