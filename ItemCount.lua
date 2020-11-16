@@ -21,9 +21,15 @@ local FIRST_BAG_SLOT = BACKPACK_CONTAINER
 local LAST_BAG_SLOT = FIRST_BAG_SLOT + NUM_BAG_SLOTS
 local LAST_BANK_SLOT = NUM_BAG_SLOTS + NUM_BANKBAGSLOTS
 local FIRST_BANK_SLOT = NUM_BAG_SLOTS + 1
-local BAG_TYPE_BANK = 'bank'
+local FIRST_INV_SLOT = INVSLOT_FIRST_EQUIPPED
+local LAST_INV_SLOT = INVSLOT_LAST_EQUIPPED
 local BAG_TYPE_BAG = 'bags'
-local BAG_TYPE_EQUIP = 'equip' -- not used
+local BAG_TYPE_BANK = 'bank'
+local BAG_TYPE_REAGENTS = 'reagents'
+local BAG_TYPE_VAULT = 'vault'
+local BAG_TYPE_EQUIP = 'equip'
+local BAG_TYPE_BAGSLOTS = 'bagslots'
+local BAG_TYPE_BANKBAGSLOTS = 'bankbagslots'
 
 local itemCountCache = {}
 local playerRealmCache
@@ -47,15 +53,15 @@ local function getBagType (bag)
   end
 
   if (REAGENTBANK_CONTAINER ~= nil and bag == REAGENTBANK_CONTAINER) then
-    return BAG_TYPE_BANK
+    return BAG_TYPE_REAGENTS
   end
 
   -- this part should never be reached
   return BAG_TYPE_BAG
 end
 
-local function initSlotItemCountCache (bagCounts, slot, item)
-  if (type(slot) ~= 'number' or type(item) ~= 'string') then
+local function updateCacheCount (cache, item)
+  if (type(item) ~= 'string') then
     return
   end
 
@@ -65,37 +71,114 @@ local function initSlotItemCountCache (bagCounts, slot, item)
   id = tonumber(id)
   count = tonumber(count or 1)
 
-  bagCounts[id] = (bagCounts[id] or 0) + count
+  cache[id] = (cache[id] or 0) + count
 end
 
-local function initBagItemCountCache (ownerCache, bag, bagData)
+local function initBagItemCountCache (bagCache, bagData)
   if (type(bagData) ~= 'table') then
-    return
+    return bagCache
   end
 
-  local bagCounts
-
-  bag = getBagType(bag)
-  bagCounts = ownerCache[bag] or {}
-
-  for slot, item in pairs(bagData) do
-    initSlotItemCountCache(bagCounts, slot, item)
+  for _, item in pairs(bagData) do
+    updateCacheCount(bagCache, item)
   end
 
-  ownerCache[bag] = bagCounts
+  return bagCache
 end
 
-local function initItemCountCache(realm, owner)
+local function initBagRangeCache (ownerData, firstBag, lastBag)
+  local bagCache = {}
+
+  for x = firstBag, lastBag, 1 do
+    initBagItemCountCache(bagCache, ownerData[x])
+  end
+
+  return bagCache
+end
+
+local function initBagCache (ownerData)
+  return initBagRangeCache(ownerData, FIRST_BAG_SLOT, LAST_BAG_SLOT)
+end
+
+local function initBankCache (ownerData)
+  local bankCache = initBagRangeCache(ownerData, FIRST_BAG_SLOT, LAST_BANK_SLOT)
+
+  return initBagItemCountCache(bankCache, ownerData[BANK_CONTAINER])
+end
+
+local function initReagentsCache (ownerData)
+  return initBagItemCountCache({}, ownerData[REAGENTBANK_CONTAINER])
+end
+
+local function initEquipRangeCache (ownerData, firstSlot, lastSlot)
+  local bagData = ownerData.equip
+  local equipCache = {}
+
+  for x = firstSlot, lastSlot, 1 do
+    updateCacheCount(equipCache, bagData[x])
+  end
+
+  return equipCache
+end
+
+local function initEquipCache (ownerData)
+  return initEquipRangeCache(ownerData, FIRST_INV_SLOT, LAST_INV_SLOT)
+end
+
+local function initVaultCache (ownerData)
+  return initBagItemCountCache({}, ownerData.vault)
+end
+
+local function initBagSlotCache (ownerData)
+  return initEquipRangeCache(ownerData,
+      ContainerIDToInventoryID(FIRST_BAG_SLOT),
+      ContainerIDToInventoryID(LAST_BAG_SLOT))
+end
+
+local function initBankBagSlotCache (ownerData)
+  return initEquipRangeCache(ownerData,
+      ContainerIDToInventoryID(FIRST_BANK_SLOT),
+      ContainerIDToInventoryID(LAST_BANK_SLOT))
+end
+
+local function initBagCacheContents (ownerCache, bag, ownerData)
+  local bagCache
+
+  if (bag == BAG_TYPE_BAG) then
+    bagCache = initBagCache(ownerData)
+  elseif (bag == BAG_TYPE_BANK) then
+    bagCache = initBankCache(ownerData)
+  elseif (bag == BAG_TYPE_EQUIP) then
+    bagCache = initEquipCache(ownerData)
+  elseif (bag == BAG_TYPE_REAGENTS) then
+    bagCache = initReagentsCache(ownerData)
+  elseif (bag == BAG_TYPE_VAULT) then
+    bagCache = initVaultCache(ownerData)
+  elseif (bag == BAG_TYPE_BAGSLOTS) then
+    bagCache = initBagSlotCache(ownerData)
+  elseif (bag == BAG_TYPE_BANKBAGSLOTS) then
+    bagCache = initBankBagSlotCache(ownerData)
+  else
+    print('BagBrother: unknown bag type "' .. bag .. '"');
+  end
+
+  ownerCache[bag] = bagCache
+
+  return bagCache
+end
+
+local function initBagTypeCache (realm, owner, bag)
   local BrotherBags = _G.BrotherBags or {}
   local realmData = BrotherBags[realm]
   local ownerData = realmData and realmData[owner]
 
   if (ownerData == nil) then
-    return false
+    return nil
   end
 
   local realmCache = itemCountCache[realm] or {}
   local ownerCache = realmCache[owner] or {}
+  local bagCache
 
   if (realmData == addon.BagBrother.Realm) then
     playerRealmCache = realmCache
@@ -105,39 +188,43 @@ local function initItemCountCache(realm, owner)
     playerCache = ownerCache
   end
 
-  for bag, bagData in pairs(ownerData) do
-    initBagItemCountCache(ownerCache, bag, bagData);
-  end
+  bagCache = initBagCacheContents(ownerCache, bag, ownerData)
 
-  itemCountCache[realm] = realmCache
   realmCache[owner] = ownerCache
+  itemCountCache[realm] = realmCache
 
-  return true
+  return bagCache
+end
+
+local function getOwnerBagCache (realm, owner, bag)
+  local cache = itemCountCache[realm]
+  cache = cache and cache[owner]
+  return cache and cache[bag]
 end
 
 function addon:UnCachePlayerBag (bag)
   if (not playerCache) then return end
 
-  playerCache[getBagType(bag)] = false
+  playerCache[getBagType(bag)] = nil
 end
 
 function addon:UnCacheRealmOwner (owner)
   if (not playerRealmCache) then return end
 
-  playerRealmCache[owner] = false
+  playerRealmCache[owner] = nil
 end
 
 function addon:GetItemCount (realm, owner, bag, itemId)
-  local data = itemCountCache[realm]
+  local data
 
-  data = data and data[owner]
   bag = getBagType(bag)
+  data = getOwnerBagCache(realm, owner, bag)
 
-  if ((not data or data[bag] == false) and not initItemCountCache(realm, owner)) then
-    return 0
+  if (data) then
+    return data[itemId] or 0
+  else
+    data = initBagTypeCache(realm, owner, bag)
+
+    return data and data[itemId] or 0
   end
-
-  data = itemCountCache[realm][owner][bag]
-
-  return (data and data[itemId]) or 0
 end
