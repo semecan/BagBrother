@@ -23,6 +23,7 @@ local LAST_BANK_SLOT = NUM_BAG_SLOTS + NUM_BANKBAGSLOTS
 local FIRST_BANK_SLOT = NUM_BAG_SLOTS + 1
 local FIRST_INV_SLOT = INVSLOT_FIRST_EQUIPPED
 local LAST_INV_SLOT = INVSLOT_LAST_EQUIPPED
+local MAX_GUILDBANK_TABS = MAX_GUILDBANK_TABS
 local BAG_TYPE_BAG = 'bags'
 local BAG_TYPE_BANK = 'bank'
 local BAG_TYPE_REAGENTS = 'reagents'
@@ -30,6 +31,7 @@ local BAG_TYPE_VAULT = 'vault'
 local BAG_TYPE_EQUIP = 'equip'
 local BAG_TYPE_BAGSLOTS = 'bagslots'
 local BAG_TYPE_BANKBAGSLOTS = 'bankbagslots'
+local BAG_TYPE_GUILD = 'guild'
 
 local itemCountCache = {}
 local playerRealmCache
@@ -141,6 +143,28 @@ local function initBankBagSlotCache (ownerData)
       ContainerIDToInventoryID(LAST_BANK_SLOT))
 end
 
+local function initGuildTab (cache, tab)
+  if (not tab) then
+    return
+  end
+
+  for slot, item in pairs(tab) do
+    if (type(slot) == 'number') then
+      updateCacheCount(cache, item);
+    end
+  end
+end
+
+local function initGuildCache (ownerData)
+  local cache = {}
+
+  for x = 1, MAX_GUILDBANK_TABS, 1 do
+    initGuildTab(cache, ownerData[x]);
+  end
+
+  return cache;
+end
+
 local function initBagCacheContents (ownerCache, bag, ownerData)
   local bagCache
 
@@ -158,6 +182,8 @@ local function initBagCacheContents (ownerCache, bag, ownerData)
     bagCache = initBagSlotCache(ownerData)
   elseif (bag == BAG_TYPE_BANKBAGSLOTS) then
     bagCache = initBankBagSlotCache(ownerData)
+  elseif (bag == BAG_TYPE_GUILD) then
+    bagCache = initGuildCache(ownerData)
   else
     print('BagBrother: unknown bag type "' .. bag .. '"');
   end
