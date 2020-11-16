@@ -33,15 +33,16 @@ function Brother:PLAYER_LOGIN()
 end
 
 function Brother:StartupCache()
-	local player, realm = UnitFullName('player')
+	local playerName, realm = UnitFullName('player')
 	BrotherBags = BrotherBags or {}
 	BrotherBags[realm] = BrotherBags[realm] or {}
 
 	self.Realm = BrotherBags[realm]
-	self.Realm[player] = self.Realm[player] or {equip = {}}
-	self.Player = self.Realm[player]
+	self.Realm[playerName] = self.Realm[playerName] or {equip = {}}
+	self.Player = self.Realm[playerName]
 
 	local player = self.Player
+
 	player.faction = UnitFactionGroup('player') == 'Alliance'
 	player.class = select(2, UnitClass('player'))
 	player.race = select(2, UnitRace('player'))
